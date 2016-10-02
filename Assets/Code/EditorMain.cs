@@ -19,9 +19,10 @@ public class EditorMain : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 
-		addCursorChild ("Start");
+		addCursorChild ("Spy");
 		addCursorChild ("End");
 		addCursorChild ("Wall");
+		addCursorChild ("Guard");
 	
 	}
 	
@@ -79,6 +80,7 @@ public class EditorMain : MonoBehaviour {
 	void addCursorChild(string name) {
 
 		GameObject child = Instantiate (Resources.Load ("Prefabs/"+name) as GameObject);
+		Destroy (child.GetComponent<SpyScript> ());
 		child.transform.SetParent (cursorTile.transform);
 		child.transform.localPosition = Vector3.zero;
 		cursorChilds.Add (child);

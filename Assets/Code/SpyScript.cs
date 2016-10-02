@@ -3,7 +3,7 @@ using System.Collections;
 
 public class SpyScript : MonoBehaviour {
 
-	public static float speed = 3f;
+	public static float speed = 1f;
 
 	// Use this for initialization
 	void Start () {
