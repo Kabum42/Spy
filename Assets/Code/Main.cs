@@ -6,10 +6,18 @@ public class Main : MonoBehaviour {
 
 	private List<GameObject> guards = new List<GameObject>();
 	private Vector2 movingGuards = Vector2.zero;
+	private int rounds = 1;
+	private int maxRounds = 5;
+	public bool readingArduino = false;
+
+	public TextMesh roundsText;
+	public GameObject arrowUp;
+	public GameObject arrowDown;
 
 	// Use this for initialization
 	void Start () {
 
+		/*
 		for (int i = 0; i < 10; i++) {
 
 			GameObject guard = Instantiate (Resources.Load("Prefabs/Guard") as GameObject);
@@ -18,6 +26,7 @@ public class Main : MonoBehaviour {
 			guards.Add (guard);
 
 		}
+		*/
 	
 	}
 	
@@ -26,6 +35,34 @@ public class Main : MonoBehaviour {
 
 		handleMovingGuards ();
 	
+	}
+
+	public void roundUp() {
+
+		if (rounds < maxRounds) {
+			rounds++;
+			arrowDown.SetActive(true);
+			if (rounds == maxRounds) {
+				arrowUp.GetComponent<ArrowUp> ().Disable ();
+			}
+		}
+
+		roundsText.text = "" + rounds;
+
+	}
+
+	public void roundDown() {
+
+		if (rounds > 1) {
+			rounds--;
+			arrowUp.SetActive(true);
+			if (rounds == 1) {
+				arrowDown.GetComponent<ArrowDown> ().Disable ();
+			}
+		}
+
+		roundsText.text = "" + rounds;
+
 	}
 
 	void handleMovingGuards() {
