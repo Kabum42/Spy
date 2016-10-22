@@ -16,9 +16,11 @@ public class EditorMain : MonoBehaviour {
 	private List<GameObject> tiles = new List<GameObject> ();
 	public Text layerText;
 	public Text selectedText;
+	public Text rotationText;
 	private static int minLayer = 1;
 	private static int maxLayer = 5;
 	private int currentLayer = minLayer;
+	private int currentRotation = 0;
 
 	public InputField mapName;
 
@@ -44,12 +46,14 @@ public class EditorMain : MonoBehaviour {
 	void Update () {
 
 		selectedText.text = "Selected: <b>" + cursorChilds [selectedChild].name + "</b>";
+		rotationText.text = "Rotation: <b>" + currentRotation + "</b>";
 
 		if (saving) {
 			handleSaving ();
 		} else if (loading) {
 			handleLoading();
 		}  else {
+
 
 			handleZoom ();
 			
@@ -58,6 +62,7 @@ public class EditorMain : MonoBehaviour {
 			cursorTile.transform.position = MatrixToWorld (cursorInMatrix);
 
 			handleChangingChild ();
+			handleRotation ();
 			handleChangingLayer ();
 			handleClicks ();
 
@@ -72,6 +77,19 @@ public class EditorMain : MonoBehaviour {
 			}
 		}
 
+
+	}
+
+	void handleRotation() {
+
+		if (Input.GetKeyDown (KeyCode.R)) {
+			currentRotation += 90;
+			if (currentRotation >= 360) {
+				currentRotation -= 360;
+			}
+		}
+
+		cursorChilds [selectedChild].transform.eulerAngles = new Vector3 (0, 0, currentRotation);
 
 	}
 
@@ -131,6 +149,9 @@ public class EditorMain : MonoBehaviour {
 			mapInfo += infoChar;
 			mapInfo += matrixPos.z;
 
+			mapInfo += infoChar;
+			mapInfo += tile.transform.eulerAngles.z;
+
 			firstTile = false;
 		}
 
@@ -152,7 +173,7 @@ public class EditorMain : MonoBehaviour {
 
 			string[] info = stringTile.Split(infoChar);
 
-			AddTileAtMatrixPos(info[0], new Vector3(float.Parse(info[1]), float.Parse(info[2]), float.Parse(info[3])));
+			AddTileAtMatrixPos(info[0], new Vector3(float.Parse(info[1]), float.Parse(info[2]), float.Parse(info[3])), float.Parse(info[4]));
 
 		}
 		
@@ -259,7 +280,7 @@ public class EditorMain : MonoBehaviour {
 		if (Input.GetMouseButton(0)) {
 			// ADD TILE
 			DestroyTileAtMatrixPos(cursorInMatrix);
-			AddTileAtMatrixPos (cursorChilds [selectedChild].name, cursorInMatrix);
+			AddTileAtMatrixPos (cursorChilds [selectedChild].name, cursorInMatrix, currentRotation);
 		} else if (Input.GetMouseButton(1)) {
 			// REMOVE TILE
 			DestroyTileAtMatrixPos(cursorInMatrix);
@@ -287,11 +308,12 @@ public class EditorMain : MonoBehaviour {
 
 	}
 
-	void AddTileAtMatrixPos(string tileName, Vector3 matrixPos) {
+	void AddTileAtMatrixPos(string tileName, Vector3 matrixPos, float rotationZ) {
 
 		GameObject originalTile = Resources.Load("Prefabs/"+tileName) as GameObject;
 		GameObject tile = Instantiate (originalTile);
 		tile.transform.position = MatrixToWorld (matrixPos);
+		tile.transform.eulerAngles = new Vector3 (0, 0, rotationZ);
 		tile.name = tileName;
 		Destroy (tile.GetComponent<SpyScript> ());
 		tiles.Add (tile);
