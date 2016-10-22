@@ -99,7 +99,7 @@ public class ArduinoHandler : MonoBehaviour {
 				if (inputsToMap.Count == 1) {
 					Debug.Log ("ASSIGNED " + order[currentToMap]);
 					mapping[inputsToMap[0]] = order[currentToMap];
-					inputsToMap.Remove(0);
+					inputsToMap.RemoveAt(0);
 				}
 			}
 

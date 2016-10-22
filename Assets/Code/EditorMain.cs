@@ -2,42 +2,178 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.IO;
+using System.Linq;
 
 public class EditorMain : MonoBehaviour {
 
 	public GameObject cursorTile;
 	private List<GameObject> cursorChilds = new List<GameObject> ();
 	private int selectedChild = 0;
-	private static float distancePerMatrixPosition = 0.2f;
+	private static float distancePerMatrixPosition = 4f;
 	private float zoom = 1f;
 	private List<GameObject> tiles = new List<GameObject> ();
 	public Text layerText;
+	public Text selectedText;
 	private static int minLayer = 1;
 	private static int maxLayer = 5;
 	private int currentLayer = minLayer;
 
+	public InputField mapName;
+
+	private bool saving = false;
+	private bool loading = false;
+
+	public static char tileChar = '@';
+	public static char infoChar = '#';
+
 	// Use this for initialization
 	void Start () {
 
-		addCursorChild ("Spy");
-		addCursorChild ("End");
-		addCursorChild ("Wall");
-		addCursorChild ("Guard");
+
+		GameObject[] prefabs = Resources.LoadAll("Prefabs", typeof(GameObject)).Cast<GameObject>().ToArray();
+
+		foreach (GameObject prefab in prefabs){
+			addCursorChild(prefab.name);
+		}
 	
 	}
 	
 	// Update is called once per frame
 	void Update () {
 
-		handleZoom ();
+		selectedText.text = "Selected: <b>" + cursorChilds [selectedChild].name + "</b>";
 
-		Vector2 cursorInMatrix = WorldToMatrix (Camera.main.ScreenToWorldPoint(Input.mousePosition));
-		cursorTile.transform.position = MatrixToWorld (cursorInMatrix);
-		cursorTile.transform.position = new Vector3 (cursorTile.transform.position.x, cursorTile.transform.position.y, -1f);
+		if (saving) {
+			handleSaving ();
+		} else if (loading) {
+			handleLoading();
+		}  else {
 
-		handleChangingChild ();
-		handleChangingLayer ();
-		handleClicks ();
+			handleZoom ();
+			
+			Vector3 cursorInMatrix = GetCursorInMatrix ();
+
+			cursorTile.transform.position = MatrixToWorld (cursorInMatrix);
+
+			handleChangingChild ();
+			handleChangingLayer ();
+			handleClicks ();
+
+			if (Input.GetKey(KeyCode.G)) {
+				saving = true;
+				mapName.gameObject.SetActive(true);
+				layerText.text = "GUARDANDO";
+			} else if (Input.GetKey(KeyCode.C)) {
+				loading = true;
+				mapName.gameObject.SetActive(true);
+				layerText.text = "CARGANDO";
+			}
+		}
+
+
+	}
+
+	void handleSaving() {
+
+		EventSystem.current.SetSelectedGameObject (mapName.gameObject);
+
+		if (Input.GetKeyDown (KeyCode.Escape)) {
+			mapName.gameObject.SetActive (false);
+			saving = false;
+		} else if (Input.GetKeyDown (KeyCode.Return)) {
+			mapName.gameObject.SetActive (false);
+			saving = false;
+			saveMap();
+		}
+
+	}
+
+	void handleLoading() {
+
+		EventSystem.current.SetSelectedGameObject (mapName.gameObject);
+
+		if (Input.GetKeyDown (KeyCode.Escape)) {
+			mapName.gameObject.SetActive(false);
+			loading = false;
+		} else if (Input.GetKeyDown (KeyCode.Return)) {
+			mapName.gameObject.SetActive(false);
+			loading = false;
+			loadMap();
+		}
+
+	}
+
+	void saveMap() {
+
+		string path = "Maps/"+ mapName.text +".txt";
+
+		string mapInfo = "";
+		bool firstTile = true;
+
+		foreach (GameObject tile in tiles) {
+
+			if (!firstTile) {
+				mapInfo += tileChar;
+			}
+
+			mapInfo += tile.name;
+
+			Vector3 matrixPos = WorldToMatrix(tile.transform.position);
+
+			mapInfo += infoChar;
+			mapInfo += matrixPos.x;
+
+			mapInfo += infoChar;
+			mapInfo += matrixPos.y;
+
+			mapInfo += infoChar;
+			mapInfo += matrixPos.z;
+
+			firstTile = false;
+		}
+
+		System.IO.File.WriteAllText (path, mapInfo);
+
+	}
+
+	void loadMap() {
+
+		DestroyAllTiles ();
+
+		string path = "Maps/"+ mapName.text +".txt";
+		
+		string mapInfo = System.IO.File.ReadAllText (path);
+
+		string[] stringTiles = mapInfo.Split (tileChar);
+
+		foreach (string stringTile in stringTiles) {
+
+			string[] info = stringTile.Split(infoChar);
+
+			AddTileAtMatrixPos(info[0], new Vector3(float.Parse(info[1]), float.Parse(info[2]), float.Parse(info[3])));
+
+		}
+		
+		foreach (GameObject tile in tiles) {
+			
+
+			
+			mapInfo += tile.name;
+			
+			mapInfo += infoChar;
+			mapInfo += tile.transform.position.x;
+			
+			mapInfo += infoChar;
+			mapInfo += tile.transform.position.y;
+			
+			mapInfo += infoChar;
+			mapInfo += tile.transform.position.z;
+			
+
+		}
+
 
 	}
 
@@ -84,6 +220,7 @@ public class EditorMain : MonoBehaviour {
 		child.transform.SetParent (cursorTile.transform);
 		child.transform.localPosition = Vector3.zero;
 		cursorChilds.Add (child);
+		child.name = name;
 
 	}
 
@@ -101,19 +238,28 @@ public class EditorMain : MonoBehaviour {
 
 		zoom -= Input.mouseScrollDelta.y * 0.05f;
 		zoom = Mathf.Clamp (zoom, 1f/3f, 3f);
-		Camera.main.orthographicSize = zoom*zoom;
+		Camera.main.orthographicSize = zoom*zoom*30f;
+
+	}
+
+	private Vector3 GetCursorInMatrix() {
+
+		Vector3 cursorInMatrix;
+		Vector3 cursorWorld = Camera.main.ScreenToWorldPoint (Input.mousePosition);
+		cursorInMatrix = WorldToMatrix (new Vector3(cursorWorld.x, cursorWorld.y, -currentLayer));
+
+		return cursorInMatrix;
 
 	}
 
 	void handleClicks() {
 
-		Vector2 cursorInMatrix = WorldToMatrix (Camera.main.ScreenToWorldPoint(Input.mousePosition));
-
+		Vector3 cursorInMatrix = GetCursorInMatrix ();
 
 		if (Input.GetMouseButton(0)) {
 			// ADD TILE
 			DestroyTileAtMatrixPos(cursorInMatrix);
-			AddTileAtMatrixPos (cursorInMatrix);
+			AddTileAtMatrixPos (cursorChilds [selectedChild].name, cursorInMatrix);
 		} else if (Input.GetMouseButton(1)) {
 			// REMOVE TILE
 			DestroyTileAtMatrixPos(cursorInMatrix);
@@ -121,21 +267,38 @@ public class EditorMain : MonoBehaviour {
 
 	}
 
-	void DestroyTileAtMatrixPos(Vector2 matrixPos) {
-		if (GetTileAtMatrixPos (matrixPos) != null) {
-			GameObject tile = GetTileAtMatrixPos (matrixPos);
+	void DestroyTileAtMatrixPos(Vector3 matrixPos) {
+
+		GameObject tile = GetTileAtMatrixPos (matrixPos);
+		if (tile != null) {
 			tiles.Remove (tile);
 			Destroy (tile);
 		}
+
 	}
 
-	void AddTileAtMatrixPos(Vector2 matrixPos) {
-		GameObject tile = Instantiate ((cursorChilds [selectedChild]) as GameObject);
+	void DestroyAllTiles() {
+
+		while (tiles.Count > 0) {
+			GameObject tile = tiles[0];
+			tiles.RemoveAt(0);
+			Destroy (tile);
+		}
+
+	}
+
+	void AddTileAtMatrixPos(string tileName, Vector3 matrixPos) {
+
+		GameObject originalTile = Resources.Load("Prefabs/"+tileName) as GameObject;
+		GameObject tile = Instantiate (originalTile);
 		tile.transform.position = MatrixToWorld (matrixPos);
+		tile.name = tileName;
+		Destroy (tile.GetComponent<SpyScript> ());
 		tiles.Add (tile);
+
 	}
 
-	GameObject GetTileAtMatrixPos(Vector2 matrixPos) {
+	GameObject GetTileAtMatrixPos(Vector3 matrixPos) {
 
 		foreach (GameObject tile in tiles) {
 			if (WorldToMatrix (tile.transform.position) == matrixPos) {
@@ -147,21 +310,22 @@ public class EditorMain : MonoBehaviour {
 
 	}
 
-	Vector2 WorldToMatrix(Vector3 worldPosition) {
+	Vector3 WorldToMatrix(Vector3 worldPosition) {
 
-		Vector2 matrixPos = Vector2.zero;
+		Vector3 matrixPos = Vector3.zero;
 		int xPos = (int) Mathf.Floor((worldPosition.x +distancePerMatrixPosition/2f) / distancePerMatrixPosition);
 		int yPos = (int) Mathf.Floor((worldPosition.y +distancePerMatrixPosition/2f) / distancePerMatrixPosition);
-		matrixPos = new Vector2 (xPos, yPos);
+		int zPos = (int) Mathf.Floor((worldPosition.z +distancePerMatrixPosition/2f) / distancePerMatrixPosition);
+		matrixPos = new Vector3 (xPos, yPos, zPos);
 
 		return matrixPos;
 
 	}
 
-	Vector3 MatrixToWorld(Vector2 matrixPosition) {
+	Vector3 MatrixToWorld(Vector3 matrixPosition) {
 
 		Vector3 worldPos = Vector3.zero;
-		worldPos = new Vector3 (matrixPosition.x, matrixPosition.y, 0f) * distancePerMatrixPosition;
+		worldPos = new Vector3 (matrixPosition.x, matrixPosition.y, matrixPosition.z) * distancePerMatrixPosition;
 
 		return worldPos;
 
