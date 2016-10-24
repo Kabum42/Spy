@@ -9,13 +9,50 @@ public class Main : MonoBehaviour {
 	private int rounds = 1;
 	private int maxRounds = 5;
 	public bool readingArduino = false;
+	private ArduinoHandler arduino;
 
+	public SpriteRenderer title;
+	public SpriteRenderer startButton;
+	public SpriteRenderer roundsButton;
 	public TextMesh roundsText;
-	public GameObject arrowUp;
-	public GameObject arrowDown;
+	public SpriteRenderer arrowUp;
+	public SpriteRenderer arrowDown;
+
+	public SpriteRenderer calibrado;
+	public SpriteRenderer calibradoDown;
+	public SpriteRenderer calibradoLeft;
+	public SpriteRenderer calibradoRight;
+	public SpriteRenderer calibradoUp;
+	public Color colorToAssign;
+	public Color colorAssigned;
+
+	private Vector3 originalTitlePos;
+	private Vector3 originalStartPos;
+	private Vector3 originalRoundsPos;
+	private Vector3 originalRoundsTextPos;
+	private Vector3 originalArrowUpPos;
+	private Vector3 originalArrowDownPos;
+
+	public State state = State.Menu;
+
+	public enum State {
+		Menu,
+		MenuToCalibrate,
+		Calibrating
+	}
 
 	// Use this for initialization
 	void Start () {
+
+		arduino = this.GetComponent<ArduinoHandler> ();
+		readingArduino = false;
+
+		originalTitlePos = title.transform.position;
+		originalStartPos = startButton.transform.position;
+		originalRoundsPos = roundsButton.transform.position;
+		originalRoundsTextPos = roundsText.transform.position;
+		originalArrowUpPos = arrowUp.transform.position;
+		originalArrowDownPos = arrowDown.transform.position;
 
 		/*
 		for (int i = 0; i < 10; i++) {
@@ -33,15 +70,86 @@ public class Main : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 
+		if (state == State.MenuToCalibrate && title.gameObject.activeInHierarchy) {
+
+			disappear (title, originalTitlePos + new Vector3 (0f, 0.1f, 0f), -0.1f, Time.deltaTime * 5f);
+			disappear (startButton, originalStartPos + new Vector3 (0f, -0.1f, 0f), -0.1f, Time.deltaTime * 5f);
+			disappear (roundsButton, originalRoundsPos + new Vector3 (0f, -0.1f, 0f), -0.1f, Time.deltaTime * 5f);
+			disappear (arrowUp, originalArrowUpPos + new Vector3 (0f, -0.1f, 0f), -0.1f, Time.deltaTime * 5f);
+			disappear (arrowDown, originalArrowDownPos + new Vector3 (0f, -0.1f, 0f), -0.1f, Time.deltaTime * 5f);
+
+			Hacks.GameObjectLerp (roundsText.gameObject, originalRoundsTextPos + new Vector3(0f, -0.1f, 0f), Time.deltaTime*5f);
+			roundsText.color = Hacks.ColorLerpAlpha (roundsText.color, -0.1f, Time.deltaTime * 5f);
+
+			//roundsButton.transform.position = Vector3.Lerp
+
+
+			if (title.color.a <= 0f) {
+				title.gameObject.SetActive (false);
+				startButton.gameObject.SetActive (false);
+				roundsButton.gameObject.SetActive (false);
+				roundsText.gameObject.SetActive (false);
+				arrowUp.gameObject.SetActive (false);
+				arrowDown.gameObject.SetActive (false);
+
+				state = State.Calibrating;
+				calibrado.gameObject.SetActive (true);
+				readingArduino = true;
+			}
+
+		}
+
+		if (state == State.Calibrating) {
+			
+			Hacks.SpriteRendererAlpha (calibrado, 1.1f, Time.deltaTime * 5f);
+
+			adjustColorCalibradoArrow (calibradoDown, 0);
+			adjustColorCalibradoArrow (calibradoLeft, 1);
+			adjustColorCalibradoArrow (calibradoRight, 2);
+			adjustColorCalibradoArrow (calibradoUp, 3);
+
+		}
+
 		handleMovingGuards ();
 	
+	}
+
+	public void handleArduinoInput(string direction) {
+
+		Debug.Log (direction);
+
+	}
+
+	void adjustColorCalibradoArrow(SpriteRenderer s, int threshold) {
+
+		if (arduino.currentToMap == threshold) {
+			Hacks.SpriteRendererColor (s, colorToAssign, Time.deltaTime * 5f);
+		} else if (arduino.currentToMap > threshold) {
+			Hacks.SpriteRendererColor (s, colorAssigned, Time.deltaTime * 5f);
+		}
+
+	}
+
+	void disappear (SpriteRenderer s, Vector3 destination, float a, float t) {
+
+		Hacks.GameObjectLerp (s.gameObject, destination, t);
+		Hacks.SpriteRendererAlpha (s, a, t);
+
+	}
+
+	public void pressedStart() {
+
+		if (state == State.Menu) {
+			state = State.MenuToCalibrate;
+		}
+
 	}
 
 	public void roundUp() {
 
 		if (rounds < maxRounds) {
 			rounds++;
-			arrowDown.SetActive(true);
+			arrowDown.gameObject.SetActive(true);
 			if (rounds == maxRounds) {
 				arrowUp.GetComponent<ArrowUp> ().Disable ();
 			}
@@ -55,7 +163,7 @@ public class Main : MonoBehaviour {
 
 		if (rounds > 1) {
 			rounds--;
-			arrowUp.SetActive(true);
+			arrowUp.gameObject.SetActive(true);
 			if (rounds == 1) {
 				arrowDown.GetComponent<ArrowDown> ().Disable ();
 			}

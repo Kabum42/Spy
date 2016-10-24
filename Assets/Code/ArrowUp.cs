@@ -31,7 +31,9 @@ public class ArrowUp : MonoBehaviour {
 
 	void Update() {
 
-		sRenderer.color = Color.Lerp (sRenderer.color, targetColor, Time.deltaTime * 5f);
+		if (main.state == Main.State.Menu) {
+			sRenderer.color = Color.Lerp (sRenderer.color, targetColor, Time.deltaTime * 5f);
+		}
 
 	}
 

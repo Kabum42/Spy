@@ -10,11 +10,15 @@ public class ArduinoHandler : MonoBehaviour {
 	private string[] order = new string[4];
 	private string[] mapping = new string[4];
 	private List<int> inputsToMap = new List<int> ();
-	private int currentToMap = 0;
+	public int currentToMap = 0;
 	private Main main;
 	
 	// Use this for initialization
 	void Start () {
+
+		main = Camera.main.GetComponent<Main> ();
+
+		currentToMap = 0;
 
 		order [0] = "down";
 		order [1] = "left";
@@ -33,15 +37,31 @@ public class ArduinoHandler : MonoBehaviour {
 		stream = new SerialPort("COM8", 9600);
 		stream.ReadTimeout = 100;
 		stream.Open();
-
-		main = Camera.main.GetComponent<Main> ();
 		
 	}
 
 	void Update() {
 
 		if (main.readingArduino) {
-			ReadArduino (100);
+			//ReadArduino (100);
+			SimulateArduino();
+		}
+
+	}
+
+	void SimulateArduino() {
+
+		if (Input.GetKeyDown (KeyCode.K)) {
+			handleData ("0");
+		}
+		if (Input.GetKeyDown (KeyCode.J)) {
+			handleData ("1");
+		}
+		if (Input.GetKeyDown (KeyCode.L)) {
+			handleData ("2");
+		}
+		if (Input.GetKeyDown (KeyCode.I)) {
+			handleData ("3");
 		}
 
 	}
@@ -51,6 +71,7 @@ public class ArduinoHandler : MonoBehaviour {
 		DateTime initialTime = DateTime.Now;
 		DateTime nowTime;
 		TimeSpan diff = default(TimeSpan);
+
 		
 		string dataString = null;
 		
@@ -99,14 +120,15 @@ public class ArduinoHandler : MonoBehaviour {
 				if (inputsToMap.Count == 1) {
 					Debug.Log ("ASSIGNED " + order[currentToMap]);
 					mapping[inputsToMap[0]] = order[currentToMap];
+					currentToMap++;
 					inputsToMap.RemoveAt(0);
 				}
 			}
 
 		} else {
+			
 			// SEND DATA TO MAIN
-
-			Debug.Log (mapping[input]);
+			main.handleArduinoInput (mapping [input]);
 
 		}
 
