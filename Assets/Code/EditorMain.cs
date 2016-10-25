@@ -11,7 +11,7 @@ public class EditorMain : MonoBehaviour {
 	public GameObject cursorTile;
 	private List<GameObject> cursorChilds = new List<GameObject> ();
 	private int selectedChild = 0;
-	private static float distancePerMatrixPosition = 4f;
+	public static float distancePerMatrixPosition = 4f;
 	private float zoom = 1f;
 	private List<GameObject> tiles = new List<GameObject> ();
 	public Text layerText;
@@ -174,24 +174,6 @@ public class EditorMain : MonoBehaviour {
 			string[] info = stringTile.Split(infoChar);
 
 			AddTileAtMatrixPos(info[0], new Vector3(float.Parse(info[1]), float.Parse(info[2]), float.Parse(info[3])), float.Parse(info[4]));
-
-		}
-		
-		foreach (GameObject tile in tiles) {
-			
-
-			
-			mapInfo += tile.name;
-			
-			mapInfo += infoChar;
-			mapInfo += tile.transform.position.x;
-			
-			mapInfo += infoChar;
-			mapInfo += tile.transform.position.y;
-			
-			mapInfo += infoChar;
-			mapInfo += tile.transform.position.z;
-			
 
 		}
 

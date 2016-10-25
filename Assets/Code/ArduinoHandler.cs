@@ -7,12 +7,12 @@ using System.Collections.Generic;
 public class ArduinoHandler : MonoBehaviour {
 
 	public static SerialPort stream;
-	private string[] order = new string[4];
-	private string[] mapping = new string[4];
+	private ArduinoInput[] order = new ArduinoInput[4];
+	private ArduinoInput[] mapping = new ArduinoInput[4];
 	private List<int> inputsToMap = new List<int> ();
 	public int currentToMap = 0;
 	private Main main;
-	
+
 	// Use this for initialization
 	void Start () {
 
@@ -20,13 +20,13 @@ public class ArduinoHandler : MonoBehaviour {
 
 		currentToMap = 0;
 
-		order [0] = "down";
-		order [1] = "left";
-		order [2] = "right";
-		order [3] = "up";
+		order [0] = ArduinoInput.Down;
+		order [1] = ArduinoInput.Left;
+		order [2] = ArduinoInput.Right;
+		order [3] = ArduinoInput.Up;
 
 		for (int i = 0; i < mapping.Length; i++) {
-			mapping[i] = "null";
+			mapping[i] = ArduinoInput.Null;
 		}
 
 		inputsToMap.Add (0);
@@ -134,4 +134,12 @@ public class ArduinoHandler : MonoBehaviour {
 
 	}
 	
+}
+
+public enum ArduinoInput {
+	Null,
+	Down,
+	Left,
+	Right,
+	Up
 }

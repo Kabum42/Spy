@@ -3,7 +3,7 @@ using System.Collections;
 
 public class SpyScript : MonoBehaviour {
 
-	public static float speed = 1f;
+	public static float speed = 30f;
 
 	// Use this for initialization
 	void Start () {
@@ -48,10 +48,12 @@ public class SpyScript : MonoBehaviour {
 		} else {
 			// XBOX CONTROLLER
 			direction = new Vector2(Input.GetAxis("Horizontal"), -Input.GetAxis("Vertical"));
+			direction.Normalize ();
 		}
 			
 		Vector2 change = direction * speed * Time.deltaTime;
-		this.transform.position = this.transform.position + new Vector3(change.x, change.y, 0f);
+
+		this.GetComponent<Rigidbody2D> ().MovePosition (this.transform.position + new Vector3 (change.x, change.y, 0f));
 
 	}
 
