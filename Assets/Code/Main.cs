@@ -33,6 +33,8 @@ public class Main : MonoBehaviour {
 	private Vector3 originalArrowUpPos;
 	private Vector3 originalArrowDownPos;
 
+	public AudioSource menuMusic;
+
 	public State state = State.Menu;
 
 	public enum State {
@@ -69,6 +71,10 @@ public class Main : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+
+		if (state == State.Menu || state == State.MenuToCalibrate || state == State.Calibrating) {
+			menuMusic.volume = Mathf.Lerp (menuMusic.volume, 0.3f, Time.deltaTime);
+		}
 
 		if (state == State.MenuToCalibrate && title.gameObject.activeInHierarchy) {
 
@@ -153,6 +159,11 @@ public class Main : MonoBehaviour {
 			if (rounds == maxRounds) {
 				arrowUp.GetComponent<ArrowUp> ().Disable ();
 			}
+			AudioSource a = Hacks.GetAudioSource ("Audio/Sonidos/boton_menu");
+			a.volume = 0.5f;
+			float modifier = ((float)rounds / (float)maxRounds);
+			a.pitch = 0.7f + modifier * 0.3f;
+			a.Play ();
 		}
 
 		roundsText.text = "" + rounds;
@@ -167,6 +178,11 @@ public class Main : MonoBehaviour {
 			if (rounds == 1) {
 				arrowDown.GetComponent<ArrowDown> ().Disable ();
 			}
+			AudioSource a = Hacks.GetAudioSource ("Audio/Sonidos/boton_menu_v2");
+			a.volume = 0.5f;
+			float modifier = ((float)rounds / (float)maxRounds);
+			a.pitch = 1f - (1f - modifier)*0.3f ;
+			a.Play ();
 		}
 
 		roundsText.text = "" + rounds;
