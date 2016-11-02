@@ -5,10 +5,13 @@ using System.Collections.Generic;
 public class Main : MonoBehaviour {
 
 	private List<GameObject> elements = new List<GameObject> ();
-	private List<GameObject> guards = new List<GameObject>();
+	private SpyScript spy;
+	private List<GuardScript> guards = new List<GuardScript>();
 	private Vector2 movingGuards = Vector2.zero;
 	private int rounds = 1;
 	private int maxRounds = 5;
+	public static int currentRound = 1;
+	public static int currentPlayer = 0;
 	public bool readingArduino = false;
 	private ArduinoHandler arduino;
 
@@ -34,7 +37,10 @@ public class Main : MonoBehaviour {
 	private Vector3 originalArrowUpPos;
 	private Vector3 originalArrowDownPos;
 
+	public Color[] playerColor = new Color[2];
+
 	public AudioSource menuMusic;
+	public AudioSource playingMusic;
 
 	public State state = State.Menu;
 
@@ -47,7 +53,8 @@ public class Main : MonoBehaviour {
 		Menu,
 		MenuToCalibrate,
 		Calibrating,
-		CalibrateToPlay
+		CalibrateToPlay,
+		Play
 	}
 
 	// Use this for initialization
@@ -132,7 +139,10 @@ public class Main : MonoBehaviour {
 			}
 
 		} else if (state == State.CalibrateToPlay) {
-			
+
+			menuMusic.volume = Mathf.Lerp (menuMusic.volume, -0.1f, Time.deltaTime * 5f);
+			playingMusic.volume = Mathf.Lerp (playingMusic.volume, 0.25f, Time.deltaTime * 5f);
+
 			changeArrowsAccordingToInput ();
 
 			if (calibrateToPlayTime > 0f) {
@@ -142,19 +152,46 @@ public class Main : MonoBehaviour {
 				}
 			} else {
 				// HEHE
-				ChangeAlphaElements (1.1f, Time.deltaTime*5f);
+				ChangeAlphaElements (1.1f, Time.deltaTime * 5f);
+
+				if (elements [0].GetComponent<SpriteRenderer> ().color.a >= 1f) {
+					state = State.Play;
+				}
+
 			}
 
-		}
+		} else if (state == State.Play) {
 
-		handleMovingGuards ();
+			changeArrowsAccordingToInput ();
+			handleMovingGuards ();
+
+		}
 	
 	}
 
 	void buildMap() {
 
+		foreach (GameObject element in elements) {
+			Destroy (element);
+		}
+
+		elements.Clear ();
+		spy = null;
+		guards.Clear ();
+
 		loadMap ("mapa1");
 
+		spy.GetComponent<SpriteRenderer> ().color = playerColor [currentPlayer];
+
+		int otherPlayer = currentPlayer + 1;
+		if (otherPlayer > 1) {
+			otherPlayer = 0;
+		}
+
+		foreach (GuardScript guard in guards) {
+			guard.GetComponent<SpriteRenderer> ().color = playerColor [otherPlayer];
+		}
+			
 	}
 
 	void loadMap(string mapName) {
@@ -206,6 +243,14 @@ public class Main : MonoBehaviour {
 		tile.transform.eulerAngles = new Vector3 (0, 0, rotationZ);
 		tile.name = tileName;
 		elements.Add (tile);
+
+		if (tile.GetComponent<SpyScript> () != null) {
+			spy = tile.GetComponent<SpyScript> ();
+		}
+
+		if (tile.GetComponent<GuardScript> () != null) {
+			guards.Add (tile.GetComponent<GuardScript> ());
+		}
 
 	}
 
@@ -344,7 +389,7 @@ public class Main : MonoBehaviour {
 
 		} else {
 
-			foreach (GameObject guard in guards) {
+			foreach (GuardScript guard in guards) {
 				
 				float amountX = 0f;
 				float amountY = 0f;
