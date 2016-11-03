@@ -42,6 +42,10 @@ public class Main : MonoBehaviour {
 
 	public Text[] playerText = new Text[2];
 
+	public Image[] crowns = new Image[2];
+	public Color goldColor;
+	public Color silverColor;
+
 	public Text countDown;
 	private float countDownTime = 4f;
 
@@ -62,7 +66,8 @@ public class Main : MonoBehaviour {
 		CalibrateToPlay,
 		PreparingLevel,
 		CountDown,
-		Play
+		Play,
+		End
 	}
 
 	// Use this for initialization
@@ -184,8 +189,8 @@ public class Main : MonoBehaviour {
 				countDownTime = 0f;
 			}
 
-			if (lastFloor != Mathf.FloorToInt(countDownTime)) {
-				countDown.transform.localScale = new Vector3(1f, 1f, 1f);
+			if (lastFloor != Mathf.FloorToInt (countDownTime)) {
+				countDown.transform.localScale = new Vector3 (1f, 1f, 1f);
 				countDown.color = Hacks.ColorLerpAlpha (countDown.color, 1f, 1f);
 			}
 
@@ -194,7 +199,7 @@ public class Main : MonoBehaviour {
 			countDown.text = "" + Mathf.FloorToInt (countDownTime);
 
 			if (countDownTime == 0f) {
-				countDown.transform.localScale = new Vector3(1f, 1f, 1f);
+				countDown.transform.localScale = new Vector3 (1f, 1f, 1f);
 				countDown.color = Hacks.ColorLerpAlpha (countDown.color, 1f, 1f);
 				countDown.text = "GO!";
 				state = State.Play;
@@ -202,9 +207,70 @@ public class Main : MonoBehaviour {
 
 		} else if (state == State.Play) {
 
-			countDown.color = Hacks.ColorLerpAlpha (countDown.color, 0f, Time.deltaTime*10f);
+			countDown.color = Hacks.ColorLerpAlpha (countDown.color, 0f, Time.deltaTime * 10f);
 			changeArrowsAccordingToInput ();
 			handleMovingGuards ();
+
+		} else if (state == State.End) {
+
+			playerText [0].rectTransform.anchoredPosition = Vector2.Lerp (playerText [0].rectTransform.anchoredPosition, new Vector2 (playerText [0].rectTransform.anchoredPosition.x, 0f), Time.deltaTime * 5f);
+			playerText [1].rectTransform.anchoredPosition = Vector2.Lerp (playerText [1].rectTransform.anchoredPosition, new Vector2 (playerText [1].rectTransform.anchoredPosition.x, 0f), Time.deltaTime * 5f);
+			playerText [0].transform.localScale = Vector3.Lerp (playerText [0].transform.localScale, new Vector3 (1f, 1f, 1f), Time.deltaTime * 10f);
+			playerText [1].transform.localScale = Vector3.Lerp (playerText [1].transform.localScale, new Vector3 (1f, 1f, 1f), Time.deltaTime * 10f);
+
+			if (playerText [0].transform.localScale.x > 0.99f) {
+				
+				int points1 = int.Parse (playerText [0].text);
+				int points2 = int.Parse (playerText [1].text);
+
+				if (points1 > points2) {
+
+					crowns [0].color = Hacks.ColorLerpAlpha (crowns [0].color, 1f, Time.deltaTime*5f);
+					crowns [0].rectTransform.anchoredPosition = playerText [0].rectTransform.anchoredPosition + new Vector2 (0f, 150f);
+
+				} else if (points2 > points1) {
+
+					crowns [1].color = Hacks.ColorLerpAlpha (crowns [1].color, 1f, Time.deltaTime*5f);
+					crowns [1].rectTransform.anchoredPosition = playerText [1].rectTransform.anchoredPosition + new Vector2 (0f, 150f);
+
+				} else {
+
+					crowns [0].color = Hacks.ColorLerpAlpha (crowns [0].color, 1f, Time.deltaTime*5f);
+					crowns [0].rectTransform.anchoredPosition = playerText [0].rectTransform.anchoredPosition + new Vector2 (0f, 150f);
+					crowns [1].color = Hacks.ColorLerpAlpha (crowns [1].color, 1f, Time.deltaTime*5f);
+					crowns [1].rectTransform.anchoredPosition = playerText [1].rectTransform.anchoredPosition + new Vector2 (0f, 150f);
+
+				}
+
+			}
+
+			if (Input.GetKeyDown (KeyCode.Return)) {
+
+				currentPlayer = 0;
+				currentRound = 1;
+				crowns [0].color = Hacks.ColorLerpAlpha (crowns [0].color, 0f, 1f);
+				crowns [1].color = Hacks.ColorLerpAlpha (crowns [0].color, 0f, 1f);
+
+				playerText [0].transform.localScale = Vector3.one * 0.5f;
+				playerText [0].rectTransform.anchorMin = new Vector2 (0.5f, 1f);
+				playerText [0].rectTransform.anchorMax = new Vector2 (0.5f, 1f);
+				playerText [0].rectTransform.anchoredPosition = new Vector2 (-200f, -70f);
+				playerText [1].transform.localScale = Vector3.one * 0.5f;
+				playerText [1].rectTransform.anchorMin = new Vector2 (0.5f, 1f);
+				playerText [1].rectTransform.anchorMax = new Vector2 (0.5f, 1f);
+				playerText [1].rectTransform.anchoredPosition = new Vector2 (200f, -70f);
+
+				calibrado.gameObject.SetActive (true);
+
+				buildMap ();
+
+			}
+
+			if (Input.GetKeyDown (KeyCode.Escape)) {
+
+				Application.LoadLevel ("Main");
+
+			}
 
 		}
 	
@@ -316,8 +382,14 @@ public class Main : MonoBehaviour {
 
 	public void TouchedFinnish() {
 
-		int points = int.Parse (playerText [currentPlayer].text) + 1;
-		playerText[currentPlayer].text = ""+ points;
+		VictoryCondition (currentPlayer);
+
+	}
+
+	void VictoryCondition(int player) {
+
+		int points = int.Parse (playerText [player].text) + 1;
+		playerText[player].text = ""+ points;
 
 		if (currentPlayer == 1) {
 			currentRound++;
@@ -325,7 +397,48 @@ public class Main : MonoBehaviour {
 
 		currentPlayer = GetOtherPlayer ();
 
-		buildMap ();
+		if (currentRound > rounds) {
+			
+			foreach (GameObject element in elements) {
+				Destroy (element);
+			}
+
+			calibrado.gameObject.SetActive (false);
+
+			Vector3 previous0 = playerText [0].transform.position;
+			Vector3 previous1 = playerText [1].transform.position;
+			playerText [0].rectTransform.anchorMin = new Vector2 (0.5f, 0.5f);
+			playerText [0].rectTransform.anchorMax = new Vector2 (0.5f, 0.5f);
+			playerText [0].transform.position = previous0;
+			playerText [1].rectTransform.anchorMin = new Vector2 (0.5f, 0.5f);
+			playerText [1].rectTransform.anchorMax = new Vector2 (0.5f, 0.5f);
+			playerText [1].transform.position = previous1;
+
+			int points1 = int.Parse (playerText [0].text);
+			int points2 = int.Parse (playerText [1].text);
+
+			if (points1 > points2) {
+
+				crowns [0].color = Hacks.ColorLerpAlpha (goldColor, 0f, 1f);
+
+			} else if (points2 > points1) {
+
+				crowns [1].color = Hacks.ColorLerpAlpha (goldColor, 0f, 1f);
+
+			} else {
+
+				crowns [0].color = Hacks.ColorLerpAlpha (silverColor, 0f, 1f);
+				crowns [1].color = Hacks.ColorLerpAlpha (silverColor, 0f, 1f);
+
+			}
+
+			state = State.End;
+
+		} else {
+			
+			buildMap ();
+
+		}
 
 	}
 
