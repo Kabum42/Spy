@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class Main : MonoBehaviour {
 
@@ -39,6 +40,11 @@ public class Main : MonoBehaviour {
 
 	public Color[] playerColor = new Color[2];
 
+	public Text[] playerText = new Text[2];
+
+	public Text countDown;
+	private float countDownTime = 4f;
+
 	public AudioSource menuMusic;
 	public AudioSource playingMusic;
 
@@ -54,6 +60,8 @@ public class Main : MonoBehaviour {
 		MenuToCalibrate,
 		Calibrating,
 		CalibrateToPlay,
+		PreparingLevel,
+		CountDown,
 		Play
 	}
 
@@ -69,6 +77,9 @@ public class Main : MonoBehaviour {
 		originalRoundsTextPos = roundsText.transform.position;
 		originalArrowUpPos = arrowUp.transform.position;
 		originalArrowDownPos = arrowDown.transform.position;
+
+		playerText [0].color = Hacks.ColorLerpAlpha (playerColor [0], 0f, 1f);
+		playerText [1].color = Hacks.ColorLerpAlpha (playerColor [1], 0f, 1f);
 
 		/*
 		for (int i = 0; i < 10; i++) {
@@ -150,18 +161,48 @@ public class Main : MonoBehaviour {
 				if (calibrateToPlayTime <= 0f) {
 					buildMap ();
 				}
-			} else {
-				// HEHE
-				ChangeAlphaElements (1.1f, Time.deltaTime * 5f);
+			} 
 
-				if (elements [0].GetComponent<SpriteRenderer> ().color.a >= 1f) {
-					state = State.Play;
-				}
+		} else if (state == State.PreparingLevel) {
 
+			ChangeAlphaElements (1.1f, Time.deltaTime * 5f);
+			playerText [0].color = Hacks.ColorLerpAlpha (playerText [0].color, 1.1f, Time.deltaTime * 5f);
+			playerText [1].color = Hacks.ColorLerpAlpha (playerText [1].color, 1.1f, Time.deltaTime * 5f);
+
+			if (elements [0].GetComponent<SpriteRenderer> ().color.a >= 1f) {
+				countDown.color = Hacks.ColorLerpAlpha (countDown.color, 0f, 1f);
+				countDown.gameObject.SetActive (true);
+				countDownTime = 4f;
+				state = State.CountDown;
+			}
+
+		} else if (state == State.CountDown) {
+			
+			int lastFloor = Mathf.FloorToInt (countDownTime);
+			countDownTime -= Time.deltaTime;
+			if (countDownTime < 0f) {
+				countDownTime = 0f;
+			}
+
+			if (lastFloor != Mathf.FloorToInt(countDownTime)) {
+				countDown.transform.localScale = new Vector3(1f, 1f, 1f);
+				countDown.color = Hacks.ColorLerpAlpha (countDown.color, 1f, 1f);
+			}
+
+			countDown.transform.localScale = Vector3.Lerp (countDown.transform.localScale, Vector3.zero, Time.deltaTime);
+			countDown.color = Hacks.ColorLerpAlpha (countDown.color, 0f, Time.deltaTime);
+			countDown.text = "" + Mathf.FloorToInt (countDownTime);
+
+			if (countDownTime == 0f) {
+				countDown.transform.localScale = new Vector3(1f, 1f, 1f);
+				countDown.color = Hacks.ColorLerpAlpha (countDown.color, 1f, 1f);
+				countDown.text = "GO!";
+				state = State.Play;
 			}
 
 		} else if (state == State.Play) {
 
+			countDown.color = Hacks.ColorLerpAlpha (countDown.color, 0f, Time.deltaTime*10f);
 			changeArrowsAccordingToInput ();
 			handleMovingGuards ();
 
@@ -183,15 +224,25 @@ public class Main : MonoBehaviour {
 
 		spy.GetComponent<SpriteRenderer> ().color = playerColor [currentPlayer];
 
+		int otherPlayer = GetOtherPlayer ();
+
+		foreach (GuardScript guard in guards) {
+			guard.GetComponent<SpriteRenderer> ().color = playerColor [otherPlayer];
+		}
+
+		state = State.PreparingLevel;
+			
+	}
+
+	int GetOtherPlayer() {
+
 		int otherPlayer = currentPlayer + 1;
 		if (otherPlayer > 1) {
 			otherPlayer = 0;
 		}
 
-		foreach (GuardScript guard in guards) {
-			guard.GetComponent<SpriteRenderer> ().color = playerColor [otherPlayer];
-		}
-			
+		return otherPlayer;
+
 	}
 
 	void loadMap(string mapName) {
@@ -260,6 +311,21 @@ public class Main : MonoBehaviour {
 		worldPos = new Vector3 (matrixPosition.x, matrixPosition.y, matrixPosition.z) * EditorMain.distancePerMatrixPosition;
 
 		return worldPos;
+
+	}
+
+	public void TouchedFinnish() {
+
+		int points = int.Parse (playerText [currentPlayer].text) + 1;
+		playerText[currentPlayer].text = ""+ points;
+
+		if (currentPlayer == 1) {
+			currentRound++;
+		}
+
+		currentPlayer = GetOtherPlayer ();
+
+		buildMap ();
 
 	}
 
