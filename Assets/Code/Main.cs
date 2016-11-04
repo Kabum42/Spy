@@ -8,6 +8,7 @@ public class Main : MonoBehaviour {
 	private List<GameObject> elements = new List<GameObject> ();
 	private SpyScript spy;
 	private List<GuardScript> guards = new List<GuardScript>();
+	private FinnishScript finnish;
 	private Vector2 movingGuards = Vector2.zero;
 	private int rounds = 1;
 	private int maxRounds = 5;
@@ -58,6 +59,9 @@ public class Main : MonoBehaviour {
 	private float maxCooldown = 1f;
 	private float cooldown = 0f;
 	private float calibrateToPlayTime = 0.5f;
+
+	private float guardsDistance = 5f;
+	private float guardsLockDown = 1f;
 
 	public enum State {
 		Menu,
@@ -289,11 +293,13 @@ public class Main : MonoBehaviour {
 		loadMap ("mapa1");
 
 		spy.GetComponent<SpriteRenderer> ().color = playerColor [currentPlayer];
+		finnish.GetComponent<SpriteRenderer> ().color = Hacks.ColorLerpAlpha (playerColor [currentPlayer], 0.5f, 1f);
 
 		int otherPlayer = GetOtherPlayer ();
 
 		foreach (GuardScript guard in guards) {
 			guard.GetComponent<SpriteRenderer> ().color = playerColor [otherPlayer];
+			guard.transform.FindChild ("vision").GetComponent<SpriteRenderer> ().color = Hacks.ColorLerpAlpha(playerColor [otherPlayer], 50f/255f, 1f);
 		}
 
 		state = State.PreparingLevel;
@@ -346,6 +352,9 @@ public class Main : MonoBehaviour {
 	void ChangeAlphaElements(float a, float t) {
 
 		foreach (GameObject element in elements) {
+			if (element == finnish.gameObject && a > 0.5f) {
+				a = 0.5f;
+			}
 			Hacks.SpriteRendererAlpha (element.GetComponent<SpriteRenderer> (), a, t);
 		}
 
@@ -369,6 +378,10 @@ public class Main : MonoBehaviour {
 			guards.Add (tile.GetComponent<GuardScript> ());
 		}
 
+		if (tile.GetComponent<FinnishScript> () != null) {
+			finnish = tile.GetComponent<FinnishScript> ();
+		}
+
 	}
 
 	Vector3 MatrixToWorld(Vector3 matrixPosition) {
@@ -383,6 +396,12 @@ public class Main : MonoBehaviour {
 	public void TouchedFinnish() {
 
 		VictoryCondition (currentPlayer);
+
+	}
+
+	public void TouchedGuard() {
+
+		VictoryCondition (GetOtherPlayer ());
 
 	}
 
@@ -462,6 +481,7 @@ public class Main : MonoBehaviour {
 	}
 
 	void changeArrowAccordingToInput(SpriteRenderer calibradoArrow, ArduinoInput associatedInput) {
+		
 		if (lastInput == associatedInput) {
 			Hacks.SpriteRendererColor (calibradoArrow, colorToAssign, Time.deltaTime * 10f);
 			calibradoArrow.transform.localScale = Vector3.Lerp (calibradoArrow.transform.localScale, Vector3.one * 3f, Time.deltaTime * 10f);
@@ -469,6 +489,7 @@ public class Main : MonoBehaviour {
 			Hacks.SpriteRendererColor (calibradoArrow, colorAssigned, Time.deltaTime * 10f);
 			calibradoArrow.transform.localScale = Vector3.Lerp (calibradoArrow.transform.localScale, Vector3.one * 1.5f, Time.deltaTime * 10f);
 		}
+
 	}
 
 	public void handleArduinoInput(ArduinoInput direction) {
@@ -546,41 +567,47 @@ public class Main : MonoBehaviour {
 
 	void handleMovingGuards() {
 
-		if (movingGuards == Vector2.zero) {
+		if (movingGuards == Vector2.zero && lastInput == ArduinoInput.Null) {
 
 			if (Input.GetKeyDown (KeyCode.I)) {
 
-				movingGuards = new Vector2 (0, 1);
+				movingGuards = new Vector2 (0, guardsLockDown);
 
 			} else if (Input.GetKeyDown (KeyCode.K)) {
 
-				movingGuards = new Vector2 (0, -1);
+				movingGuards = new Vector2 (0, -guardsLockDown);
 
 			} else if (Input.GetKeyDown (KeyCode.J)) {
 
-				movingGuards = new Vector2 (-1, 0);
+				movingGuards = new Vector2 (-guardsLockDown, 0);
 
 			} else if (Input.GetKeyDown (KeyCode.L)) {
 
-				movingGuards = new Vector2 (1, 0);
+				movingGuards = new Vector2 (guardsLockDown, 0);
 
 			}
 
 		} else {
 
 			foreach (GuardScript guard in guards) {
-				
+
+				Vector2 direction = new Vector2 (movingGuards.x, movingGuards.y).normalized;
 				float amountX = 0f;
 				float amountY = 0f;
 
 				if (movingGuards.x != 0) {
-					amountX = (movingGuards.x / Mathf.Abs (movingGuards.x)) * Time.deltaTime;
+					amountX = direction.x * guardsDistance * (1f/guardsLockDown) * Time.deltaTime;
 				}
 				if (movingGuards.y != 0) {
-					amountY = (movingGuards.y / Mathf.Abs (movingGuards.y)) * Time.deltaTime;
+					amountY = direction.y * guardsDistance * (1f/guardsLockDown) * Time.deltaTime;
 				}
 
-				guard.transform.position = guard.transform.position + new Vector3 (amountX, amountY, 0f);
+				guard.GetComponent<Rigidbody2D>().MovePosition(guard.transform.position + new Vector3 (amountX, amountY, 0f));
+
+
+				float arrowAngle = Mathf.Rad2Deg * Mathf.Atan2(direction.y, direction.x);
+				guard.transform.localEulerAngles = new Vector3(0f, 0f, Mathf.LerpAngle(guard.transform.localEulerAngles.z, arrowAngle, Time.deltaTime*10f));
+
 			}
 
 			movingGuards = Vector2.MoveTowards (movingGuards, Vector2.zero, Time.deltaTime);
