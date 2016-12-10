@@ -12,6 +12,7 @@ public class ArduinoHandler : MonoBehaviour {
 	private List<int> inputsToMap = new List<int> ();
 	public int currentToMap = 0;
 	private Main main;
+	private bool listenArduino = true;
 
 	// Use this for initialization
 	void Start () {
@@ -42,9 +43,18 @@ public class ArduinoHandler : MonoBehaviour {
 
 	void Update() {
 
+		if (Input.GetKeyDown (KeyCode.Tab)) {
+			listenArduino = !listenArduino;
+		}
+
 		if (main.readingArduino) {
-			//ReadArduino (100);
-			SimulateArduino();
+
+			if (listenArduino) {
+				ReadArduino ();
+			} else {
+				SimulateArduino();
+			}
+
 		}
 
 	}
@@ -66,34 +76,30 @@ public class ArduinoHandler : MonoBehaviour {
 
 	}
 	
-	void ReadArduino(int timeout) {
+	void ReadArduino() {
 		
 		DateTime initialTime = DateTime.Now;
 		DateTime nowTime;
 		TimeSpan diff = default(TimeSpan);
 
-		
 		string dataString = null;
 		
-		do {
-			try {
-				dataString = stream.ReadLine();
-			}
-			catch (TimeoutException) {
-				dataString = null;
-			}
-			
-			if (dataString != null)
-			{
-				handleData(dataString);
-				stream.DiscardInBuffer();
-				stream.DiscardOutBuffer();
-			}
-			
-			nowTime = DateTime.Now;
-			diff = nowTime - initialTime;
-			
-		} while (diff.Milliseconds < timeout);
+		try {
+			dataString = stream.ReadLine();
+		}
+		catch (TimeoutException) {
+			dataString = null;
+		}
+		
+		if (dataString != null)
+		{
+			handleData(dataString);
+			stream.DiscardInBuffer();
+			stream.DiscardOutBuffer();
+		}
+		
+		nowTime = DateTime.Now;
+		diff = nowTime - initialTime;
 		
 	}
 	

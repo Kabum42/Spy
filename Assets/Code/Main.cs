@@ -2,13 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using System.Linq;
 
 public class Main : MonoBehaviour {
 
 	private List<GameObject> elements = new List<GameObject> ();
 	private SpyScript spy;
 	private List<GuardScript> guards = new List<GuardScript>();
-	private FinnishScript finnish;
+	private List<GameObject> finnishList = new List<GameObject>();
 	private Vector2 movingGuards = Vector2.zero;
 	private int rounds = 1;
 	private int maxRounds = 5;
@@ -24,11 +25,11 @@ public class Main : MonoBehaviour {
 	public SpriteRenderer arrowUp;
 	public SpriteRenderer arrowDown;
 
-	public SpriteRenderer calibrado;
-	public SpriteRenderer calibradoDown;
-	public SpriteRenderer calibradoLeft;
-	public SpriteRenderer calibradoRight;
-	public SpriteRenderer calibradoUp;
+	public Image calibrado;
+	public Image calibradoDown;
+	public Image calibradoLeft;
+	public Image calibradoRight;
+	public Image calibradoUp;
 	public Color colorToAssign;
 	public Color colorAssigned;
 
@@ -60,8 +61,11 @@ public class Main : MonoBehaviour {
 	private float cooldown = 0f;
 	private float calibrateToPlayTime = 0.5f;
 
-	private float guardsDistance = 5f;
+	private float guardsDistance = 4.75f * 2f;
 	private float guardsLockDown = 1f;
+
+	private TextAsset[] maps;
+	private TextAsset lastMap;
 
 	public enum State {
 		Menu,
@@ -90,6 +94,8 @@ public class Main : MonoBehaviour {
 		playerText [0].color = Hacks.ColorLerpAlpha (playerColor [0], 0f, 1f);
 		playerText [1].color = Hacks.ColorLerpAlpha (playerColor [1], 0f, 1f);
 
+		maps = Resources.LoadAll("Maps", typeof(TextAsset)).Cast<TextAsset>().ToArray();
+
 		/*
 		for (int i = 0; i < 10; i++) {
 
@@ -105,6 +111,11 @@ public class Main : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+
+		if (spy != null) {
+			Vector3 targetPosition = new Vector3(spy.gameObject.transform.position.x, spy.gameObject.transform.position.y, this.transform.position.z);
+			this.transform.position = Vector3.Lerp(this.transform.position, targetPosition, Time.deltaTime*10f);
+		}
 
 		if (cooldown > 0) {
 			cooldown -= Time.deltaTime;
@@ -146,8 +157,8 @@ public class Main : MonoBehaviour {
 			}
 
 		} else if (state == State.Calibrating) {
-			
-			Hacks.SpriteRendererAlpha (calibrado, 1.1f, Time.deltaTime * 5f);
+
+			calibrado.color = Hacks.ColorLerpAlpha(calibrado.color, 1.1f, Time.deltaTime*5f);
 
 			adjustColorCalibradoArrow (calibradoDown, 0);
 			adjustColorCalibradoArrow (calibradoLeft, 1);
@@ -155,6 +166,10 @@ public class Main : MonoBehaviour {
 			adjustColorCalibradoArrow (calibradoUp, 3);
 
 			if (arduino.currentToMap >= 4) {
+				Vector3 previousPos = calibrado.transform.position;
+				calibrado.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+				calibrado.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+				calibrado.transform.position = previousPos;
 				state = State.CalibrateToPlay;
 			}
 
@@ -248,7 +263,7 @@ public class Main : MonoBehaviour {
 
 			}
 
-			if (Input.GetKeyDown (KeyCode.Return)) {
+			if (Input.GetKeyDown (KeyCode.Return) || Input.GetButtonDown("Start")) {
 
 				currentPlayer = 0;
 				currentRound = 1;
@@ -270,7 +285,7 @@ public class Main : MonoBehaviour {
 
 			}
 
-			if (Input.GetKeyDown (KeyCode.Escape)) {
+			if (Input.GetKeyDown (KeyCode.Escape) || Input.GetButtonDown("Select")) {
 
 				Application.LoadLevel ("Main");
 
@@ -288,12 +303,20 @@ public class Main : MonoBehaviour {
 
 		elements.Clear ();
 		spy = null;
+		finnishList.Clear ();
 		guards.Clear ();
 
-		loadMap ("mapa1");
+		if (currentPlayer == 0) {
+			loadMap (maps[Random.Range (0, maps.Length)]);
+		} else {
+			loadMap (lastMap);
+		}
 
 		spy.GetComponent<SpriteRenderer> ().color = playerColor [currentPlayer];
-		finnish.GetComponent<SpriteRenderer> ().color = Hacks.ColorLerpAlpha (playerColor [currentPlayer], 0.5f, 1f);
+
+		foreach (GameObject finnish in finnishList) {
+			finnish.GetComponent<SpriteRenderer> ().color = Hacks.ColorLerpAlpha (playerColor [currentPlayer], 0.5f, 1f);
+		}
 
 		int otherPlayer = GetOtherPlayer ();
 
@@ -317,13 +340,13 @@ public class Main : MonoBehaviour {
 
 	}
 
-	void loadMap(string mapName) {
+	void loadMap(TextAsset map) {
+
+		lastMap = map;
 
 		DestroyAllElements ();
 
-		string path = "Maps/"+ mapName +".txt";
-
-		string mapInfo = System.IO.File.ReadAllText (path);
+		string mapInfo = map.text;
 
 		string[] stringTiles = mapInfo.Split (EditorMain.tileChar);
 
@@ -352,7 +375,7 @@ public class Main : MonoBehaviour {
 	void ChangeAlphaElements(float a, float t) {
 
 		foreach (GameObject element in elements) {
-			if (element == finnish.gameObject && a > 0.5f) {
+			if (finnishList.Contains(element) && a > 0.5f) {
 				a = 0.5f;
 			}
 			Hacks.SpriteRendererAlpha (element.GetComponent<SpriteRenderer> (), a, t);
@@ -379,7 +402,7 @@ public class Main : MonoBehaviour {
 		}
 
 		if (tile.GetComponent<FinnishScript> () != null) {
-			finnish = tile.GetComponent<FinnishScript> ();
+			finnishList.Add(tile);
 		}
 
 	}
@@ -463,8 +486,8 @@ public class Main : MonoBehaviour {
 
 	void changeArrowsAccordingToInput() {
 
-		calibrado.transform.position = Vector3.Lerp (calibrado.transform.position, new Vector3 (0f, 25.5f, 0f), Time.deltaTime * 10f);
-		calibrado.transform.localScale = Vector3.Lerp (calibrado.transform.localScale, new Vector3 (0.3f, 0.3f, 0.3f), Time.deltaTime * 10f);
+		calibrado.rectTransform.anchoredPosition = Vector2.Lerp (calibrado.rectTransform.anchoredPosition, new Vector2 (0f, -50f), Time.deltaTime * 10f);
+		calibrado.transform.localScale = Vector3.Lerp (calibrado.transform.localScale, new Vector3 (0.5f, 0.5f, 0.5f), Time.deltaTime * 10f);
 
 		// DOWN
 		changeArrowAccordingToInput(calibradoDown, ArduinoInput.Down);
@@ -480,14 +503,14 @@ public class Main : MonoBehaviour {
 
 	}
 
-	void changeArrowAccordingToInput(SpriteRenderer calibradoArrow, ArduinoInput associatedInput) {
+	void changeArrowAccordingToInput(Image calibradoArrow, ArduinoInput associatedInput) {
 		
 		if (lastInput == associatedInput) {
-			Hacks.SpriteRendererColor (calibradoArrow, colorToAssign, Time.deltaTime * 10f);
-			calibradoArrow.transform.localScale = Vector3.Lerp (calibradoArrow.transform.localScale, Vector3.one * 3f, Time.deltaTime * 10f);
+			calibradoArrow.color = Color.Lerp(calibradoArrow.color, colorToAssign, Time.deltaTime *10f);
+			calibradoArrow.transform.localScale = Vector3.Lerp (calibradoArrow.transform.localScale, Vector3.one * 0.2f, Time.deltaTime * 10f);
 		} else {
-			Hacks.SpriteRendererColor (calibradoArrow, colorAssigned, Time.deltaTime * 10f);
-			calibradoArrow.transform.localScale = Vector3.Lerp (calibradoArrow.transform.localScale, Vector3.one * 1.5f, Time.deltaTime * 10f);
+			calibradoArrow.color = Color.Lerp(calibradoArrow.color, colorAssigned, Time.deltaTime *10f);
+			calibradoArrow.transform.localScale = Vector3.Lerp (calibradoArrow.transform.localScale, Vector3.one * 0.1f, Time.deltaTime * 10f);
 		}
 
 	}
@@ -497,17 +520,29 @@ public class Main : MonoBehaviour {
 		if (lastInput == ArduinoInput.Null) {
 			cooldown = maxCooldown;
 			lastInput = direction;
-			Debug.Log (direction.ToString());
+
+			if (lastInput == ArduinoInput.Down) {
+				movingGuards = new Vector2 (0, -guardsLockDown);
+			} else if (lastInput == ArduinoInput.Left) {
+				movingGuards = new Vector2 (-guardsLockDown, 0);
+			} else if (lastInput == ArduinoInput.Right) {
+				movingGuards = new Vector2 (guardsLockDown, 0);
+			} else if (lastInput == ArduinoInput.Up) {
+				movingGuards = new Vector2 (0, guardsLockDown);
+			}
+
+
+			//Debug.Log (direction.ToString());
 		}
 
 	}
 
-	void adjustColorCalibradoArrow(SpriteRenderer s, int threshold) {
+	void adjustColorCalibradoArrow(Image s, int threshold) {
 
 		if (arduino.currentToMap == threshold) {
-			Hacks.SpriteRendererColor (s, colorToAssign, Time.deltaTime * 5f);
+			s.color = Color.Lerp(s.color, colorToAssign, Time.deltaTime * 5f);
 		} else if (arduino.currentToMap > threshold) {
-			Hacks.SpriteRendererColor (s, colorAssigned, Time.deltaTime * 5f);
+			s.color = Color.Lerp(s.color, colorAssigned, Time.deltaTime * 5f);
 		}
 
 	}
@@ -567,27 +602,7 @@ public class Main : MonoBehaviour {
 
 	void handleMovingGuards() {
 
-		if (movingGuards == Vector2.zero && lastInput == ArduinoInput.Null) {
-
-			if (Input.GetKeyDown (KeyCode.I)) {
-
-				movingGuards = new Vector2 (0, guardsLockDown);
-
-			} else if (Input.GetKeyDown (KeyCode.K)) {
-
-				movingGuards = new Vector2 (0, -guardsLockDown);
-
-			} else if (Input.GetKeyDown (KeyCode.J)) {
-
-				movingGuards = new Vector2 (-guardsLockDown, 0);
-
-			} else if (Input.GetKeyDown (KeyCode.L)) {
-
-				movingGuards = new Vector2 (guardsLockDown, 0);
-
-			}
-
-		} else {
+		if (lastInput != ArduinoInput.Null) {
 
 			foreach (GuardScript guard in guards) {
 
@@ -596,17 +611,17 @@ public class Main : MonoBehaviour {
 				float amountY = 0f;
 
 				if (movingGuards.x != 0) {
-					amountX = direction.x * guardsDistance * (1f/guardsLockDown) * Time.deltaTime;
+					amountX = direction.x * guardsDistance * (1f / guardsLockDown) * Time.deltaTime;
 				}
 				if (movingGuards.y != 0) {
-					amountY = direction.y * guardsDistance * (1f/guardsLockDown) * Time.deltaTime;
+					amountY = direction.y * guardsDistance * (1f / guardsLockDown) * Time.deltaTime;
 				}
 
-				guard.GetComponent<Rigidbody2D>().MovePosition(guard.transform.position + new Vector3 (amountX, amountY, 0f));
+				guard.GetComponent<Rigidbody2D> ().MovePosition (guard.transform.position + new Vector3 (amountX, amountY, 0f));
 
 
-				float arrowAngle = Mathf.Rad2Deg * Mathf.Atan2(direction.y, direction.x);
-				guard.transform.localEulerAngles = new Vector3(0f, 0f, Mathf.LerpAngle(guard.transform.localEulerAngles.z, arrowAngle, Time.deltaTime*10f));
+				float arrowAngle = Mathf.Rad2Deg * Mathf.Atan2 (direction.y, direction.x);
+				guard.transform.localEulerAngles = new Vector3 (0f, 0f, Mathf.LerpAngle (guard.transform.localEulerAngles.z, arrowAngle, Time.deltaTime * 10f));
 
 			}
 

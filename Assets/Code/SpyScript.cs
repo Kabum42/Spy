@@ -3,7 +3,7 @@ using System.Collections;
 
 public class SpyScript : MonoBehaviour {
 
-	public static float speed = 30f;
+	public static float speed = 20f;
 	private GameObject arrow;
 	private float arrowAngle = 0f;
 	private Main main;
